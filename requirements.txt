@@ -27,3 +27,6 @@ win10toast>=0.9; sys_platform == 'win32'
 
 # 进度条
 tqdm>=4.65.0
+
+# v1.5新增 - 反检测浏览器自动化（方案B，创作者中心对海外IP封锁暂不可用）
+DrissionPage>=4.0.0

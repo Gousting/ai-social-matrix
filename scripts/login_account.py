@@ -38,7 +38,7 @@ from scripts.utils.logger import logger
 
 # 各平台登录URL
 LOGIN_URLS = {
-    "xiaohongshu": "https://creator.xiaohongshu.com/",
+    "xiaohongshu": "https://www.xiaohongshu.com",  # 创作者中心可能被封锁，改用主页登录
     "zhihu": "https://www.zhihu.com/creator",
     "bilibili": "https://member.bilibili.com/",
     "wechat_mp": "https://mp.weixin.qq.com/",
@@ -103,8 +103,6 @@ def login_account(account_config: Dict):
     print(f"⚠️  登录成功后，浏览器会自动关闭")
     print(f"⚠️  如果之前已登录过，会直接检测登录状态\n")
 
-    input("按回车键开始...")
-
     try:
         with sync_playwright() as p:
             # 使用持久化上下文（非无头模式，方便用户操作）
@@ -141,13 +139,26 @@ def login_account(account_config: Dict):
             while time.time() - start_time < max_wait:
                 time.sleep(5)
                 try:
-                    current_url = page.url
-                    # 检查是否已经离开登录页面
-                    if "login" not in current_url.lower() and "signin" not in current_url.lower():
-                        # 检查是否有用户信息（已登录标志）
-                        # 不同平台检查方式不同，这里简单检查URL变化
-                        logged_in = True
-                        break
+                    # 检测登录状态：检查页面是否有用户头像或已登录标志
+                    # 小红书：登录后右上角会显示用户头像，未登录显示"登录"按钮
+                    if platform == "xiaohongshu":
+                        # 检查是否有用户头像元素（已登录标志）
+                        avatar = page.query_selector("img.avatar, .user-avatar, [class*='avatar']")
+                        # 检查是否还有登录按钮（未登录标志）
+                        login_btn = page.query_selector("text=登录, button:has-text('登录'), .login-btn")
+                        if avatar and not login_btn:
+                            logged_in = True
+                            break
+                        # 备用：检查URL是否包含个人主页路径
+                        if "/user/profile" in page.url or "/me" in page.url:
+                            logged_in = True
+                            break
+                    else:
+                        # 其他平台：检查URL是否离开登录页
+                        current_url = page.url
+                        if "login" not in current_url.lower() and "signin" not in current_url.lower():
+                            logged_in = True
+                            break
                 except Exception:
                     continue
 
@@ -155,6 +166,7 @@ def login_account(account_config: Dict):
                 elapsed = int(time.time() - start_time)
                 if elapsed % 30 == 0:
                     print(f"  等待登录中... 已等待{elapsed}秒 (最多{max_wait}秒)")
+                    print(f"  当前URL: {page.url}")
 
             if logged_in:
                 print(f"\n✅ 检测到登录成功!")
