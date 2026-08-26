@@ -1,0 +1,29 @@
+# AI社交媒体矩阵管理运营系统 - 依赖清单
+# 安装命令: pip install -r requirements.txt
+
+# 浏览器自动化
+playwright>=1.40.0
+
+# LLM API调用（OpenAI兼容格式）
+openai>=1.0.0
+
+# 配置文件
+pyyaml>=6.0
+
+# 图片处理
+Pillow>=10.0.0
+
+# HTTP请求
+requests>=2.31.0
+
+# 数据库
+# SQLite为Python内置，无需额外安装
+
+# 数据处理
+pandas>=2.0.0
+
+# 桌面通知（可选，用于评论/私信提醒）
+win10toast>=0.9; sys_platform == 'win32'
+
+# 进度条
+tqdm>=4.65.0

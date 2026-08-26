@@ -1,0 +1,115 @@
+# ============================================
+# AI社交媒体矩阵管理运营系统 - 系统设置
+# ============================================
+
+# ---------- 路径配置 ----------
+paths:
+  data_dir: ./data
+  raw_notes_dir: ./data/raw_notes
+  drafted_pending: ./data/drafted/待审核
+  drafted_approved: ./data/drafted/已审核
+  metrics_dir: ./data/metrics
+  reports_dir: ./data/reports
+  publish_log_db: ./data/publish_log.db
+  metrics_db: ./data/metrics.db
+  raw_notes_db: ./data/raw_notes.db
+  images_dir: ./images
+  cookies_dir: ./cookies
+  profiles_dir: ./profiles
+  logs_dir: ./logs
+
+# ---------- Clash配置 ----------
+clash:
+  enabled: true
+  external_controller: "http://127.0.0.1:9090"
+  proxy_selector: "Proxy"  # Clash配置中的代理选择器名称
+  node_check_interval: 300  # 节点可用性检测间隔（秒）
+  retry_on_node_fail: true  # 节点失效时自动切换备用节点
+
+# ---------- 排期配置 ----------
+schedule:
+  posts_per_day: 8
+  daily_times:
+    - "08:00"
+    - "08:30"
+    - "11:30"
+    - "12:00"
+    - "14:00"
+    - "14:30"
+    - "17:30"
+    - "21:00"
+    - "21:30"
+  platform_interval: 120  # 同平台账号发布间隔（分钟）
+  start_day: 1  # 从第几天开始（1=明天）
+  max_retry: 3  # 发布失败最大重试次数
+  retry_delay: 300  # 重试间隔（秒）
+
+# ---------- 选题采集配置 ----------
+topic_collection:
+  keywords:
+    - "codex 安装"
+    - "codex 使用教程"
+    - "minimax 部署"
+    - "AI工具推荐"
+    - "开源AI项目"
+    - "AI代码助手"
+    - "本地部署AI"
+    - "AI效率工具"
+  min_likes: 50
+  min_favorites: 30
+  max_days: 30  # 采集最近多少天的内容
+  top_n: 20  # 取热度Top N作为候选
+  heat_score_weights:
+    likes: 0.3
+    favorites: 0.4
+    comments: 0.3
+
+# ---------- 内容改写配置 ----------
+rewrite:
+  similarity_threshold: 60  # 原创性自检相似度阈值（%），超过则重新改写
+  max_rewrite_attempts: 3  # 单篇最大改写次数
+  platforms:
+    xiaohongshu:
+      title_max_length: 20
+      content_target_length: 500
+      tags_count: "5-8"
+    zhihu:
+      title_max_length: 30
+      content_target_length: "2000-3000"
+      tags_count: "3-5"
+    bilibili:
+      title_max_length: 80
+      content_target_length: "1500-2000"
+      tags_count: "5-10"
+    wechat_mp:
+      title_max_length: 64
+      content_target_length: "3000+"
+      tags_count: "自定义栏目"
+    wechat_channels:
+      title_max_length: 30
+      content_target_length: 200
+      tags_count: "3-5"
+
+# ---------- 数据采集配置 ----------
+metrics:
+  collect_time: "08:00"  # 每日数据采集时间
+  platforms:
+    - xiaohongshu
+    - zhihu
+    - bilibili
+    - wechat_mp
+    - wechat_channels
+  fields:
+    - views
+    - likes
+    - favorites
+    - comments
+    - shares
+    - followers_gain
+
+# ---------- 日志配置 ----------
+logging:
+  level: INFO  # DEBUG / INFO / WARNING / ERROR
+  log_file: ./logs/ai_matrix.log
+  max_bytes: 10485760  # 10MB
+  backup_count: 5
