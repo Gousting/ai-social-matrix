@@ -34,6 +34,7 @@ import os
 import json
 import argparse
 import time
+import random
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
@@ -236,7 +237,12 @@ def generate_schedule(drafts: List[Dict], start_date: str = None,
             date_str = current_date.strftime("%Y-%m-%d")
             key = f"{account_name}_{date_str}"
 
-        publish_time = f"{date_str} {time_slots[slot_index]}"
+        # v1.5：发布时间随机化（±30分钟浮动），避免太规律被判定为机器发布
+        jitter_minutes = config.settings.get("schedule", {}).get("publish_time_jitter", 30)
+        base_time = datetime.strptime(f"{date_str} {time_slots[slot_index]}", "%Y-%m-%d %H:%M")
+        jitter = random.randint(-jitter_minutes, jitter_minutes)
+        actual_time = base_time + timedelta(minutes=jitter)
+        publish_time = actual_time.strftime("%Y-%m-%d %H:%M")
         slot_index += 1
         account_daily_count[key] = account_daily_count.get(key, 0) + 1
 
@@ -246,6 +252,8 @@ def generate_schedule(drafts: List[Dict], start_date: str = None,
             "platform": platform,
             "account": account_name,
             "publish_time": publish_time,
+            "scheduled_time": f"{date_str} {time_slots[slot_index-1]}",  # 原始计划时间
+            "time_jitter": jitter,  # 随机浮动分钟数
             "status": "scheduled"
         })
 

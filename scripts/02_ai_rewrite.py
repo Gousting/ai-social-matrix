@@ -212,6 +212,59 @@ def parse_ai_response(response: str, platform: str) -> Dict:
     return result
 
 
+def check_compliance(content: str, title: str = "") -> Dict:
+    """
+    v1.5新增：合规检查
+    检查内容中是否包含私域引流违禁词、广告法违禁词
+    """
+    compliance_config = config.settings.get("compliance", {})
+    if not compliance_config.get("enabled", True):
+        return {"passed": True, "issues": [], "banned_words_found": []}
+
+    private_banned = compliance_config.get("private_traffic_banned_words", [])
+    ad_banned = compliance_config.get("ad_law_banned_words", [])
+
+    issues = []
+    banned_found = []
+    full_text = f"{title}\n{content}"
+
+    # 检查私域引流违禁词
+    for word in private_banned:
+        if word in full_text:
+            banned_found.append(word)
+            issues.append(f"私域引流违禁词: '{word}'（违规，会被限流/封号）")
+
+    # 检查广告法违禁词
+    for word in ad_banned:
+        if word in full_text:
+            banned_found.append(word)
+            issues.append(f"广告法违禁词: '{word}'（绝对化用语）")
+
+    return {
+        "passed": len(issues) == 0,
+        "issues": issues,
+        "banned_words_found": banned_found
+    }
+
+
+def add_ai_content_label(content: str, platform: str) -> str:
+    """
+    v1.5新增：添加AI内容标识
+    2026年平台要求：发布时必须主动标识AI内容，正文标注"人工智能生成"
+    """
+    label_config = config.settings.get("rewrite", {}).get("ai_content_label", {})
+    if not label_config.get("enabled", True):
+        return content
+
+    text_label = label_config.get("text_label", "人工智能生成")
+
+    # 在内容末尾添加AI标识
+    if text_label not in content:
+        content = content.rstrip() + f"\n\n（{text_label}，已人工审核优化）"
+
+    return content
+
+
 def check_quality(draft: Dict, platform: str) -> Dict:
     """
     质量检查：字数、结构元素
@@ -298,6 +351,27 @@ def rewrite_single(title: str, content: str, platform: str, position: str = "",
     draft["source_note_id"] = source_note_id
     draft["position"] = position
     draft["rewrite_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # v1.5：添加AI内容标识（2026年平台要求必须主动标识）
+    draft["content"] = add_ai_content_label(draft["content"], platform)
+    draft["ai_label_added"] = True
+
+    # v1.5：合规检查（私域引流违禁词、广告法违禁词）
+    compliance = check_compliance(draft["content"], draft["title"])
+    draft["compliance"] = compliance
+    if not compliance["passed"]:
+        logger.warning(f"合规检查未通过: {compliance['issues']}")
+        draft["quality_warning"] = f"合规问题: {'; '.join(compliance['issues'])}"
+    else:
+        logger.info("合规检查通过")
+
+    # v1.5：人工修改率提醒（2026年平台要求≥60%）
+    human_mod_rate = config.settings.get("rewrite", {}).get("human_modification_rate", 60)
+    draft["human_modification_required"] = human_mod_rate
+    draft["human_modification_note"] = (
+        f"⚠️ 人工修改率必须≥{human_mod_rate}%（2026年平台要求），"
+        f"AI直发必被限流。请人工重写开头+加真实细节+验证代码准确性。"
+    )
 
     # 原创性自检
     if content:

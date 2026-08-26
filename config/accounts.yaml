@@ -1,113 +1,114 @@
 # ============================================
 # AI社交媒体矩阵管理运营系统 - 账号配置
 # ============================================
+# v1.5 更新：从10号矩阵改为单号起步→3个月逐步扩张
+# 第1个月：只启用1个小红书主号（极致垂直）
+# 第2个月：+抖音分发号（同素材改编）
+# 第3个月：+第2个小红书号（同人设换切片）
+# ============================================
 # 每个账号需要配置：平台、账号名、Cookie路径、浏览器Profile路径、Clash代理节点
 # Cookie和Profile在首次登录后自动生成
 # ============================================
 
 accounts:
-  # ---------- 小红书 (3个) ----------
+  # ============================================
+  # 第一阶段（第1个月）：小红书主号 - 唯一启用
+  # ============================================
   - platform: xiaohongshu
-    name: ai_xiaobai
-    display_name: "AI小白日记"
+    name: ai_main
+    display_name: "AI工具实战笔记"  # 建议修改为你的账号名
     enabled: true
-    cookie_path: ./cookies/xiaohongshu/ai_xiaobai.json
-    user_data_dir: ./profiles/xhs/ai_xiaobai
-    clash_node: "代理节点名称1"
-    position: "零基础入门教程，保姆级、截图多、语气亲切"
+    stage: 1  # 第1个月启用
+    cookie_path: ./cookies/xiaohongshu/ai_main.json
+    user_data_dir: ./profiles/xhs/ai_main
+    # v1.5：主号用住宅IP或手机流量，不用Clash机房IP
+    # clash_node 留空表示不使用代理，直接用本地网络
+    clash_node: ""
+    use_proxy: false  # 主号不使用代理
+    position: "AI工具安装使用教程，保姆级、截图多、真实踩坑经验"
+    # v1.5：前15篇只打一个标签，极致垂直
+    focus_tag: "Codex安装使用"  # 前15篇统一标签，建议从以下选一个：
+                                  # - Codex安装使用（最聚焦）
+                                  # - MiniMax本地部署
+                                  # - 免费AI工具盘点
+                                  # - AI工具效率提升实战
     daily_post_limit: 1
+    # v1.5：7天养号期，新号前7天只浏览不发布
+    warmup_days: 7
+    note: "主号：第1个月唯一启用，极致垂直，前15篇只打一个标签，日更"
 
+  # ============================================
+  # 第二阶段（第2个月）：抖音分发号 - 暂不启用
+  # ============================================
+  - platform: douyin
+    name: ai_douyin
+    display_name: "AI工具速览"  # 建议修改为你的账号名
+    enabled: false
+    stage: 2  # 第2个月启用
+    cookie_path: ./cookies/douyin/ai_douyin.json
+    user_data_dir: ./profiles/douyin/ai_douyin
+    clash_node: ""
+    use_proxy: false
+    position: "同素材改编分发，图文成片（剪映AI），前1.5秒抛结论"
+    daily_post_limit: 3  # 周更3条
+    note: "抖音分发号：第2个月启用，用剪映AI图文成片，同素材改编不做双份原创"
+
+  # ============================================
+  # 第三阶段（第3个月）：小红书副号 - 暂不启用
+  # ============================================
   - platform: xiaohongshu
-    name: ai_gongjukong
-    display_name: "AI工具控"
-    enabled: true
-    cookie_path: ./cookies/xiaohongshu/ai_gongjukong.json
-    user_data_dir: ./profiles/xhs/ai_gongjukong
-    clash_node: "代理节点名称2"
-    position: "工具盘点+效率技巧，清单体、对比图、干货密集"
-    daily_post_limit: 1
+    name: ai_secondary
+    display_name: "AI工具变现指南"  # 建议修改为你的账号名（同人设换切片）
+    enabled: false
+    stage: 3  # 第3个月启用
+    cookie_path: ./cookies/xiaohongshu/ai_secondary.json
+    user_data_dir: ./profiles/xhs/ai_secondary
+    # v1.5：副号可用Clash住宅IP节点（确保不是机房IP）
+    clash_node: "住宅IP节点名称"  # 需要替换为实际的住宅IP节点
+    use_proxy: true
+    position: "同人设换切片：主号做'安装使用教程'，副号做'AI工具接单/变现渠道'"
+    daily_post_limit: 1  # 隔日更
+    warmup_days: 7
+    note: "小红书副号：第3个月启用，同人设换切片，验证爆款模板可复制性"
 
-  - platform: xiaohongshu
-    name: coder_toolbox
-    display_name: "程序员的AI工具箱"
-    enabled: true
-    cookie_path: ./cookies/xiaohongshu/coder_toolbox.json
-    user_data_dir: ./profiles/xhs/coder_toolbox
-    clash_node: "代理节点名称3"
-    position: "开发者视角的AI工具，技术向、代码截图、硬核"
-    daily_post_limit: 1
-
-  # ---------- 知乎 (3个) ----------
+  # ============================================
+  # 后续扩展（暂不启用，验证成功后再考虑）
+  # ============================================
   - platform: zhihu
-    name: ai_gongjupai
-    display_name: "AI工具派"
-    enabled: true
-    cookie_path: ./cookies/zhihu/ai_gongjupai.json
-    user_data_dir: ./profiles/zhihu/ai_gongjupai
-    clash_node: "代理节点名称1"
+    name: ai_zhihu
+    display_name: "AI工具深度测评"
+    enabled: false
+    stage: 4  # 后续扩展
+    cookie_path: ./cookies/zhihu/ai_zhihu.json
+    user_data_dir: ./profiles/zhihu/ai_zhihu
+    clash_node: ""
+    use_proxy: false
     position: "深度测评+横向对比，专业、数据驱动、长文"
     daily_post_limit: 1
+    note: "知乎：后续扩展，当前阶段不做"
 
-  - platform: zhihu
-    name: kaiyuan_wajueji
-    display_name: "开源挖掘机"
-    enabled: true
-    cookie_path: ./cookies/zhihu/kaiyuan_wajueji.json
-    user_data_dir: ./profiles/zhihu/kaiyuan_wajueji
-    clash_node: "代理节点名称2"
-    position: "开源项目安装踩坑记录，实战、踩坑、代码多"
-    daily_post_limit: 1
-
-  - platform: zhihu
-    name: ai_xiaolv_gongfang
-    display_name: "AI效率工坊"
-    enabled: false  # 第三阶段启用
-    cookie_path: ./cookies/zhihu/ai_xiaolv_gongfang.json
-    user_data_dir: ./profiles/zhihu/ai_xiaolv_gongfang
-    clash_node: "代理节点名称3"
-    position: "AI工具提升工作效率，实用、场景化、步骤清晰"
-    daily_post_limit: 1
-
-  # ---------- B站 (2个) ----------
   - platform: bilibili
-    name: ai_zhuangjiyuan
+    name: ai_bilibili
     display_name: "AI装机猿"
-    enabled: true
-    cookie_path: ./cookies/bilibili/ai_zhuangjiyuan.json
-    user_data_dir: ./profiles/bilibili/ai_zhuangjiyuan
-    clash_node: "代理节点名称1"
+    enabled: false
+    stage: 4
+    cookie_path: ./cookies/bilibili/ai_bilibili.json
+    user_data_dir: ./profiles/bilibili/ai_bilibili
+    clash_node: ""
+    use_proxy: false
     position: "安装教程+环境配置，步骤详细、报错解决"
     daily_post_limit: 1
+    note: "B站：后续扩展，当前阶段不做"
 
-  - platform: bilibili
-    name: ai_xiangmu_sudi
-    display_name: "AI项目速递"
-    enabled: false  # 第三阶段启用
-    cookie_path: ./cookies/bilibili/ai_xiangmu_sudi.json
-    user_data_dir: ./profiles/bilibili/ai_xiangmu_sudi
-    clash_node: "代理节点名称2"
-    position: "新项目速递+简评，资讯向、快速更新"
-    daily_post_limit: 1
-
-  # ---------- 公众号 (1个) ----------
   - platform: wechat_mp
-    name: ai_gongju_zhoukan
+    name: ai_wechat_mp
     display_name: "AI工具周刊"
-    enabled: true
-    cookie_path: ./cookies/wechat_mp/ai_gongju_zhoukan.json
-    user_data_dir: ./profiles/wechat_mp/ai_gongju_zhoukan
-    clash_node: "代理节点名称1"
-    position: "每周精选+深度解读，体系化、有独家观点"
+    enabled: false
+    stage: 2  # 第2个月可作为私域载体启用
+    cookie_path: ./cookies/wechat_mp/ai_wechat_mp.json
+    user_data_dir: ./profiles/wechat_mp/ai_wechat_mp
+    clash_node: ""
+    use_proxy: false
+    position: "私域沉淀阵地，每周精选+深度解读"
     daily_post_limit: 1
-    note: "公众号发布需要手机端扫码确认，无法完全自动化"
-
-  # ---------- 视频号 (1个) ----------
-  - platform: wechat_channels
-    name: ai_yifenzhong
-    display_name: "AI一分钟"
-    enabled: true
-    cookie_path: ./cookies/wechat_channels/ai_yifenzhong.json
-    user_data_dir: ./profiles/wechat_channels/ai_yifenzhong
-    clash_node: "代理节点名称1"
-    position: "精简图文卡片，极简、1分钟读完"
-    daily_post_limit: 1
+    note: "公众号：第2个月可作为私域载体启用，发布需要手机端扫码确认"

@@ -1,6 +1,8 @@
 # ============================================
 # AI社交媒体矩阵管理运营系统 - 系统设置
 # ============================================
+# v1.5 更新：单号起步→3个月逐步扩张
+# ============================================
 
 # ---------- 路径配置 ----------
 paths:
@@ -25,21 +27,22 @@ clash:
   proxy_selector: "Proxy"  # Clash配置中的代理选择器名称
   node_check_interval: 300  # 节点可用性检测间隔（秒）
   retry_on_node_fail: true  # 节点失效时自动切换备用节点
+  # v1.5：主号不使用代理（用住宅IP或手机流量），副号才用Clash住宅IP节点
+  # 注意：机房IP社交媒体识别极严，必须确保是住宅IP节点
 
 # ---------- 排期配置 ----------
 schedule:
-  posts_per_day: 8
+  # v1.5：单号起步，每天1篇
+  posts_per_day: 1
+  # v1.5：流量高峰时段，发布时间增加随机化
   daily_times:
-    - "08:00"
-    - "08:30"
-    - "11:30"
-    - "12:00"
-    - "14:00"
-    - "14:30"
-    - "17:30"
-    - "21:00"
-    - "21:30"
-  platform_interval: 120  # 同平台账号发布间隔（分钟）
+    - "12:00"  # 午休时段
+    - "19:30"  # 晚间高峰
+    - "21:00"  # 睡前高峰
+  # v1.5：发布时间随机化（±30分钟浮动），避免太规律被判定为机器发布
+  publish_time_jitter: 30  # 随机浮动分钟数
+  # v1.5：同平台账号发布间隔（3个号规模小，间隔更长）
+  platform_interval: 240  # 同平台账号发布间隔（分钟），从120改为240
   start_day: 1  # 从第几天开始（1=明天）
   max_retry: 3  # 发布失败最大重试次数
   retry_delay: 300  # 重试间隔（秒）
@@ -66,13 +69,27 @@ topic_collection:
 
 # ---------- 内容改写配置 ----------
 rewrite:
-  similarity_threshold: 60  # 原创性自检相似度阈值（%），超过则重新改写
+  # v1.2：相似度阈值从60收紧到40
+  similarity_threshold: 40  # 原创性自检相似度阈值（%），超过则重新改写
   max_rewrite_attempts: 3  # 单篇最大改写次数
+  # v1.5：人工修改率要求≥60%（2026年平台要求）
+  human_modification_rate: 60  # 人工修改率最低要求（%）
+  # v1.5：AI内容标识要求
+  ai_content_label:
+    enabled: true  # 发布时必须主动标识AI内容
+    checkbox_label: "AI合成内容"  # 发布时勾选的选项
+    text_label: "人工智能生成"  # 正文中需要标注的文字
+    text_label_font_size_ratio: 0.8  # 标注文字字体不小于正文的80%
+    # 处罚说明：首次漏标限流7天，二次禁言30天，三次永久封禁
   platforms:
     xiaohongshu:
       title_max_length: 20
       content_target_length: 500
       tags_count: "5-8"
+    douyin:
+      title_max_length: 30
+      content_target_length: 200
+      tags_count: "3-5"
     zhihu:
       title_max_length: 30
       content_target_length: "2000-3000"
@@ -85,20 +102,59 @@ rewrite:
       title_max_length: 64
       content_target_length: "3000+"
       tags_count: "自定义栏目"
-    wechat_channels:
-      title_max_length: 30
-      content_target_length: 200
-      tags_count: "3-5"
+
+# ---------- 合规检查配置（v1.5新增） ----------
+compliance:
+  enabled: true  # 发布前自动合规检查
+  # 私域引流违禁词（绝对禁止出现在正文/标题/评论中）
+  private_traffic_banned_words:
+    - "扣1"
+    - "扣 1"
+    - "加我"
+    - "加vx"
+    - "加微信"
+    - "vx"
+    - "v信"
+    - "薇信"
+    - "微❤"
+    - "微信"
+    - "联系方式"
+    - "私聊"
+    - "私信我"
+    - "滴滴"
+    - "+我"
+    - "看主页"
+    - "看置顶拿联系方式"
+    - "地球号"
+  # 广告法违禁词（绝对化用语）
+  ad_law_banned_words:
+    - "最"
+    - "第一"
+    - "唯一"
+    - "顶级"
+    - "极品"
+    - "绝对"
+    - "100%"
+    - "永久"
+    - "万能"
+  # 合规引流方式（白名单）
+  allowed_private_traffic_methods:
+    - "小红书群聊功能"
+    - "小红书瞬间"
+    - "置顶笔记合规引导"
+    - "主页简介'看置顶'"
+    - "平台官方留资组件"
 
 # ---------- 数据采集配置 ----------
 metrics:
   collect_time: "08:00"  # 每日数据采集时间
+  # v1.5：第一阶段只采集小红书
   platforms:
     - xiaohongshu
-    - zhihu
-    - bilibili
-    - wechat_mp
-    - wechat_channels
+    # - douyin  # 第2个月启用
+    # - zhihu  # 后续扩展
+    # - bilibili  # 后续扩展
+    # - wechat_mp  # 第2个月作为私域载体启用
   fields:
     - views
     - likes
