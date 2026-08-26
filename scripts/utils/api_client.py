@@ -33,10 +33,13 @@ class APIClient:
         for p in self._providers:
             name = p["name"]
             try:
+                # 支持自定义headers（如opencode需要 x-preview-f-free）
+                extra_headers = p.get("extra_headers", {})
                 client = OpenAI(
                     api_key=p["api_key"],
                     base_url=p["base_url"],
-                    timeout=self._call_config.get("timeout", 60)
+                    timeout=self._call_config.get("timeout", 60),
+                    default_headers=extra_headers if extra_headers else None
                 )
                 self._clients[name] = client
                 self._stats[name] = {
