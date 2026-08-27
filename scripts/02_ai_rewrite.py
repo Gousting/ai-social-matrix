@@ -323,12 +323,26 @@ def rewrite_single(title: str, content: str, platform: str, position: str = "",
 
     logger.info(f"开始改写: [{template['name']}] {title[:30]}")
 
+    # v1.6：注入爆款模板参考（从高赞帖子拆解的模板库中匹配）
+    viral_reference = ""
+    try:
+        from scripts.utils.viral_template_helper import get_template_reference
+        viral_reference = get_template_reference(title, top_n=2)
+        if viral_reference:
+            logger.info(f"已匹配爆款模板参考，注入改写Prompt")
+    except Exception as e:
+        logger.debug(f"爆款模板参考注入失败（不影响主流程）: {e}")
+
     # 构建Prompt
     user_prompt = template["user"].format(
         title=title,
         content=content if content else "（无正文，请根据标题自行创作）",
         position=position if position else "AI工具教程博主"
     )
+
+    # 追加爆款模板参考
+    if viral_reference:
+        user_prompt += viral_reference
 
     # 调用API
     try:
