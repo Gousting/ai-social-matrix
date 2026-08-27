@@ -23,8 +23,7 @@ def test_publish_flow():
     print("=" * 60)
 
     # 加载账号配置
-    all_accounts = config.settings.get("accounts", [])
-    xhs_accounts = [a for a in all_accounts if a.get("platform") == "xiaohongshu" and a.get("enabled", True)]
+    xhs_accounts = config.get_accounts_by_platform("xiaohongshu")
 
     if not xhs_accounts:
         print("❌ 未找到小红书账号配置")
