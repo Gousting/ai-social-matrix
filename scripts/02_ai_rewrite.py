@@ -309,7 +309,7 @@ def check_quality(draft: Dict, platform: str) -> Dict:
 
 
 def rewrite_single(title: str, content: str, platform: str, position: str = "",
-                    source_note_id: str = None) -> Dict:
+                    source_note_id: str = None, dynamic_reference: str = "") -> Dict:
     """
     改写单篇内容为指定平台版本
 
@@ -343,6 +343,11 @@ def rewrite_single(title: str, content: str, platform: str, position: str = "",
     # 追加爆款模板参考
     if viral_reference:
         user_prompt += viral_reference
+
+    # v1.7：追加动态爆款参考（最新采集的高赞帖子共性规律）
+    if dynamic_reference:
+        user_prompt += dynamic_reference
+        logger.info(f"已注入动态爆款参考，共{len(dynamic_reference)}字符")
 
     # 调用API
     try:
@@ -432,7 +437,7 @@ def save_draft(draft: Dict) -> str:
     return filepath
 
 
-def rewrite_from_note(note_id: str, platforms: list, position: str = "") -> list:
+def rewrite_from_note(note_id: str, platforms: list, position: str = "", dynamic_reference: str = "") -> list:
     """
     从选题库读取指定选题，改写为多个平台版本
     """
@@ -455,7 +460,7 @@ def rewrite_from_note(note_id: str, platforms: list, position: str = "") -> list
 
     saved_files = []
     for platform in platforms:
-        draft = rewrite_single(title, content, platform, position, source_note_id=note_id)
+        draft = rewrite_single(title, content, platform, position, source_note_id=note_id, dynamic_reference=dynamic_reference)
         if draft:
             filepath = save_draft(draft)
             saved_files.append(filepath)
@@ -465,7 +470,7 @@ def rewrite_from_note(note_id: str, platforms: list, position: str = "") -> list
     return saved_files
 
 
-def rewrite_top_n(n: int, platforms: list) -> list:
+def rewrite_top_n(n: int, platforms: list, dynamic_reference: str = "") -> list:
     """
     改写Top N选题
     """
@@ -484,7 +489,7 @@ def rewrite_top_n(n: int, platforms: list) -> list:
         position = "AI工具教程博主，专注分享AI工具安装使用教程"
 
         for platform in platforms:
-            draft = rewrite_single(title, content, platform, position, source_note_id=note_id)
+            draft = rewrite_single(title, content, platform, position, source_note_id=note_id, dynamic_reference=dynamic_reference)
             if draft:
                 filepath = save_draft(draft)
                 saved_files.append(filepath)
@@ -539,6 +544,12 @@ def main():
                         help="目标平台: xiaohongshu/zhihu/bilibili/wechat_mp/wechat_channels/all")
     parser.add_argument("--position", type=str, default="", help="账号定位描述")
     parser.add_argument("--list", action="store_true", help="列出待审核草稿")
+    parser.add_argument("--dynamic-reference", action="store_true",
+                        help="启用动态爆款参考（自动采集小红书最新高赞帖子作为参考）")
+    parser.add_argument("--keyword", type=str, default="",
+                        help="动态参考的搜索关键词（不填则自动从标题提取）")
+    parser.add_argument("--dynamic-top", type=int, default=3,
+                        help="动态参考采集前N篇（默认3）")
 
     args = parser.parse_args()
 
@@ -555,12 +566,36 @@ def main():
         list_drafts()
         return
 
+    # v1.7：动态爆款参考（在改写前采集最新高赞帖子）
+    dynamic_reference = ""
+    if args.dynamic_reference:
+        keyword = args.keyword
+        if not keyword and args.title:
+            keyword = args.title[:10]
+        elif not keyword and args.text:
+            keyword = args.text[:10]
+        elif not keyword:
+            keyword = "AI工具"
+
+        print(f"\n🔍 正在采集动态爆款参考（关键词: {keyword}，前{args.dynamic_top}篇）...")
+        print("   （首次采集约需2-3分钟，后续使用缓存）")
+        try:
+            from scripts.utils.dynamic_viral_collector import get_dynamic_reference
+            dynamic_reference = get_dynamic_reference(keyword, top_n=args.dynamic_top)
+            if dynamic_reference:
+                print(f"   ✅ 动态参考采集完成，共{len(dynamic_reference)}字符")
+            else:
+                print("   ⚠️  动态参考采集失败，将只用静态模板库")
+        except Exception as e:
+            print(f"   ⚠️  动态参考采集异常: {e}")
+            dynamic_reference = ""
+
     if args.text:
         # 从指定文本改写
         title = args.title or "未命名内容"
         saved_files = []
         for platform in platforms:
-            draft = rewrite_single(title, args.text, platform, args.position)
+            draft = rewrite_single(title, args.text, platform, args.position, dynamic_reference=dynamic_reference)
             if draft:
                 filepath = save_draft(draft)
                 saved_files.append(filepath)
@@ -568,12 +603,12 @@ def main():
         return
 
     if args.note_id:
-        saved_files = rewrite_from_note(args.note_id, platforms, args.position)
+        saved_files = rewrite_from_note(args.note_id, platforms, args.position, dynamic_reference=dynamic_reference)
         print(f"\n改写完成: 共生成{len(saved_files)}篇草稿")
         return
 
     if args.top:
-        saved_files = rewrite_top_n(args.top, platforms)
+        saved_files = rewrite_top_n(args.top, platforms, dynamic_reference=dynamic_reference)
         print(f"\n改写完成: 共生成{len(saved_files)}篇草稿")
         return
 
