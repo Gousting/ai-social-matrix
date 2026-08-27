@@ -780,14 +780,18 @@ def collect_detail_from_modal(page) -> Optional[Dict]:
         return None
 
 
-def get_dynamic_reference(keyword: str, top_n: int = 3, use_cache: bool = True) -> str:
+def get_dynamic_reference(keyword: str, top_n: int = 3, use_cache: bool = True,
+                          min_likes: int = 1000, min_favorites: int = 500) -> str:
     """
     获取动态爆款参考（对外接口，被AI改写脚本调用）
+    v2.0优化：添加高赞阈值过滤，只采集点赞/收藏量高的帖子
 
     Args:
         keyword: 搜索关键词
         top_n: 采集前N篇
         use_cache: 是否使用缓存
+        min_likes: 最低点赞数阈值（默认1000）
+        min_favorites: 最低收藏数阈值（默认500）
 
     Returns:
         格式化的参考文本
@@ -800,10 +804,33 @@ def get_dynamic_reference(keyword: str, top_n: int = 3, use_cache: bool = True) 
             return cache["reference"]
 
     # 搜索并采集帖子详情（在同一个浏览器会话中完成）
-    details = search_and_collect(keyword, top_n=top_n)
+    # 多采集一些，因为后面要过滤低赞帖子
+    collect_count = max(top_n * 3, 10)
+    details = search_and_collect(keyword, top_n=collect_count)
     if not details:
         logger.warning(f"未采集到帖子: {keyword}")
         return ""
+
+    # v2.0新增：高赞阈值过滤
+    filtered_details = []
+    for post in details:
+        likes = post.get("likes", 0)
+        favorites = post.get("favorites", 0)
+        if likes >= min_likes or favorites >= min_favorites:
+            filtered_details.append(post)
+        else:
+            logger.info(f"  过滤低赞帖子: {post.get('title', '')[:30]} (赞:{likes}, 藏:{favorites})")
+
+    logger.info(f"高赞过滤: 采集{len(details)}篇 → 保留{len(filtered_details)}篇 "
+                f"(阈值: 赞≥{min_likes} 或 藏≥{min_favorites})")
+
+    # 如果过滤后不够，用原始的补充
+    if len(filtered_details) < top_n:
+        logger.warning(f"高赞帖子不足{top_n}篇，使用全部采集结果")
+        filtered_details = details
+
+    # 只取前top_n篇
+    details = filtered_details[:top_n]
 
     # 批量拆解
     reference = analyze_posts(details)
@@ -813,15 +840,17 @@ def get_dynamic_reference(keyword: str, top_n: int = 3, use_cache: bool = True) 
         cache_data = {
             "reference": reference,
             "posts": details,
-            "post_count": len(details)
+            "post_count": len(details),
+            "min_likes": min_likes,
+            "min_favorites": min_favorites
         }
         save_cache(keyword, top_n, cache_data)
 
     # 格式化参考文本
     if reference:
-        result = f"\n\n===== 动态爆款参考（关键词: {keyword}，采集{len(details)}篇最新高赞帖子） =====\n"
+        result = f"\n\n===== 动态爆款参考（关键词: {keyword}，采集{len(details)}篇高赞帖子，赞≥{min_likes}或藏≥{min_favorites}） =====\n"
         result += reference
-        result += "\n===== 请参考以上最新爆款帖子的共性规律进行改写，但必须原创 =====\n"
+        result += "\n===== 请参考以上高赞帖子的共性规律进行改写，但必须原创，加入自己的真实经验 =====\n"
         return result
     else:
         return ""

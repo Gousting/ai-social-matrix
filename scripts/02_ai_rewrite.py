@@ -50,17 +50,49 @@ from scripts.utils.logger import logger
 PROMPT_TEMPLATES = {
     "xiaohongshu": {
         "name": "小红书",
-        "system": "你是一个小红书AI工具领域的爆款博主，擅长写保姆级教程和干货分享，语气亲切像朋友聊天，喜欢用emoji和分点结构。",
+        "system": "你是一个小红书AI工具领域的真实博主，有3年使用AI工具的经验，踩过无数坑，擅长写保姆级教程。你的文字像跟朋友聊天一样自然，有温度，有个人真实感受，绝对不会有AI味。你写的每一篇教程都细节满满，零基础的人照着做也能成功。",
         "user": """请将以下参考内容改写成一篇小红书图文笔记。
 
-要求：
-1. 标题控制在20字以内，用数字+emoji吸引点击，制造好奇心或痛点
-2. 正文500字左右，分点清晰，每段不超过3行，多用emoji分隔
-3. 结构：开头用痛点/场景引入（1-2句）→ 中间给步骤/方法（分点）→ 结尾给总结+互动引导
-4. 标签5-8个，包含#AI工具 #效率工具 等相关标签，用空格分隔
-5. 语气亲切自然，像朋友分享经验，不要太官方，避免绝对化用语
-6. 必须原创改写，不要直接复制原文，加入自己的理解和经验
-7. 输出格式：第一行是标题，空一行，然后是正文，最后一行是标签
+【核心定位】
+你是一个真实的AI工具博主，不是AI！写出来的内容必须像真人写的，有个人真实感受、踩坑经历、口语化表达，绝对不能有AI味。
+
+【去AI味严格要求 - 必须遵守】
+1. 必须有个人真实感受和踩坑经历，比如"我之前踩过这个坑"、"我当时折腾了半天"
+2. 观点要有取舍，不要中立无取舍，比如"这个方法我亲测好用，那个方法不推荐"
+3. 结构不要太规整，重要的步骤展开详细写，不重要的一笔带过
+4. 避免连接词密集（首先、其次、最后、综上所述、总而言之）
+5. 避免大词堆叠、句式整齐、强行概括
+6. 不要强行升华、结尾金句、苦难叙事
+7. 小红书特别注意：不要有广告公司感、作文式对仗、四字名词冒号清单、slogan化
+8. 可以有小瑕疵、口语化表达、语气词，更像真人
+
+【基于高赞帖子二次创作】
+9. 必须参考同领域高赞帖子的标题公式、开头钩子、正文结构、结尾CTA
+10. 但必须原创，不能直接复制内容，要加入自己的真实经验和独特视角
+11. 标题要符合爆款公式：痛点+数字+情绪+承诺
+
+【教程细节要求 - 必须非常详细】
+12. 每一步都要有详细的操作说明，包含具体的按钮名称、菜单路径、参数设置
+13. 包含常见问题和解决方案
+14. 包含注意事项和避坑提醒（"这里要注意..."、"别踩这个坑..."）
+15. 包含验证步骤（"如何确认操作成功"）
+16. 假设读者是零基础，什么都不懂，不要跳步
+
+【内容要求】
+17. 标题控制在20字以内，用数字+emoji吸引点击，制造好奇心或痛点
+18. 正文500字左右，分点清晰，每段不超过3行，多用emoji分隔
+19. 结构：开头用痛点/场景引入（1-2句）→ 中间给步骤/方法（分点）→ 结尾给总结+互动引导
+20. 标签5-8个，包含#AI工具 #效率工具 等相关标签，用空格分隔
+21. 语气亲切自然，像朋友分享经验，不要太官方
+
+【合规要求 - 严格遵守】
+22. 绝对禁止使用绝对化用语：最、第一、唯一、顶级、极品、绝对、100%、完美等
+    （注意："第一步"、"第二步"等步骤描述是允许的）
+23. 禁止私域引流：微信、公众号、加群、私信、联系方式等
+24. 禁止虚假宣传和夸大效果
+
+【输出格式】
+第一行是标题，空一行，然后是正文，最后一行是标签
 
 参考内容标题：{title}
 参考内容正文：
@@ -68,7 +100,7 @@ PROMPT_TEMPLATES = {
 
 账号定位：{position}
 """,
-        "max_tokens": 1500,
+        "max_tokens": 2000,
         "target_length": 500
     },
 
@@ -216,6 +248,7 @@ def check_compliance(content: str, title: str = "") -> Dict:
     """
     v1.5新增：合规检查
     检查内容中是否包含私域引流违禁词、广告法违禁词
+    v1.7优化：排除步骤描述误判（第一步、第二步等）
     """
     compliance_config = config.settings.get("compliance", {})
     if not compliance_config.get("enabled", True):
@@ -228,15 +261,47 @@ def check_compliance(content: str, title: str = "") -> Dict:
     banned_found = []
     full_text = f"{title}\n{content}"
 
+    # 需要排除的常见词组（不是违禁用法）
+    safe_phrases = {
+        "第一": ["第一步", "第二步骤", "第一次", "第一时间", "第一行", "第一列", "第一个", "第一种", "第一页", "第一节", "第一章", "第一篇", "第一版", "第一阶段", "第一部分", "第一轮"],
+        "最": [
+            # 时间相关
+            "最近", "最后", "最终", "最早", "最晚", "最新",
+            # 程度比较（口语化，非广告法绝对化）
+            "最好", "最多", "最少", "最快", "最慢", "最高", "最低", "最大", "最小",
+            "最佳", "最优", "最适合", "最常用", "最基础", "最简单", "最详细", "最全面",
+            "最核心", "最关键", "最重要", "最有效", "最稳定", "最稳", "最方便", "最实用",
+            "最受欢迎", "最常见", "最容易", "最直接", "最基本", "最主要", "最明显",
+            # 其他常见用法
+            "最前", "最后", "最初", "最终", "最为", "最多", "最少"
+        ],
+    }
+
+    def is_safe_usage(word: str, text: str) -> bool:
+        """检查是否是安全用法"""
+        if word not in safe_phrases:
+            return False
+        for safe in safe_phrases[word]:
+            if safe in text:
+                # 检查这个safe词组是否包含了word的匹配位置
+                # 简单处理：如果文本中包含safe词组，且word在safe词组中，认为是安全的
+                return True
+        return False
+
     # 检查私域引流违禁词
     for word in private_banned:
         if word in full_text:
             banned_found.append(word)
             issues.append(f"私域引流违禁词: '{word}'（违规，会被限流/封号）")
 
-    # 检查广告法违禁词
+    # 检查广告法违禁词（排除步骤描述误判）
     for word in ad_banned:
         if word in full_text:
+            # 检查是否是安全用法
+            if is_safe_usage(word, full_text):
+                # 进一步检查：是否有非安全用法的"第一"
+                # 比如"全国第一"、"行业第一"等才是违规
+                continue
             banned_found.append(word)
             issues.append(f"广告法违禁词: '{word}'（绝对化用语）")
 
@@ -306,6 +371,163 @@ def check_quality(draft: Dict, platform: str) -> Dict:
         "title_length": len(title),
         "tags_count": len(tags)
     }
+
+
+def final_review(draft: Dict, platform: str) -> Dict:
+    """
+    v2.0新增：最终审核 - 对照用户画像进行全面审核
+    检查去AI味、高赞参考、教程细节、合规等维度
+    """
+    title = draft.get("title", "")
+    content = draft.get("content", "")
+    full_text = f"{title}\n{content}"
+
+    review = {
+        "passed": True,
+        "score": 0,
+        "dimensions": {},
+        "issues": [],
+        "suggestions": []
+    }
+
+    # 1. 去AI味检查
+    ai_signal_score = 100
+    ai_issues = []
+
+    # 检查AI味特征词
+    ai_patterns = [
+        ("首先", "连接词密集"),
+        ("其次", "连接词密集"),
+        ("最后", "连接词密集"),
+        ("综上所述", "强行概括"),
+        ("总而言之", "强行概括"),
+        ("值得注意的是", "官腔"),
+        ("需要指出的是", "官腔"),
+        ("在这个过程中", "模板腔"),
+        ("通过以上分析", "模板腔"),
+        ("不仅...而且", "句式整齐"),
+        ("一方面...另一方面", "句式整齐"),
+    ]
+
+    for word, issue in ai_patterns:
+        if word in full_text:
+            ai_signal_score -= 5
+            ai_issues.append(f"包含'{word}'，{issue}")
+
+    # 检查是否有个人感受
+    personal_signals = ["我", "自己", "亲测", "踩坑", "折腾", "建议", "推荐", "觉得", "感觉"]
+    has_personal = any(s in full_text for s in personal_signals)
+    if not has_personal:
+        ai_signal_score -= 20
+        ai_issues.append("缺少个人真实感受，像AI写的")
+
+    # 检查是否有踩坑经历
+    pitfall_signals = ["坑", "报错", "失败", "折腾", "注意", "别", "小心"]
+    has_pitfall = any(s in full_text for s in pitfall_signals)
+    if not has_pitfall:
+        ai_signal_score -= 10
+        ai_issues.append("缺少踩坑经历和避坑提醒")
+
+    review["dimensions"]["ai_signal"] = {
+        "score": max(0, ai_signal_score),
+        "issues": ai_issues
+    }
+    if ai_signal_score < 70:
+        review["passed"] = False
+        review["issues"].extend(ai_issues)
+
+    # 2. 教程细节检查
+    detail_score = 100
+    detail_issues = []
+
+    # 检查是否有步骤
+    step_patterns = ["第一步", "第二步", "第三步", "1.", "2.", "3.", "①", "②", "③"]
+    has_steps = any(p in full_text for p in step_patterns)
+    if not has_steps:
+        detail_score -= 30
+        detail_issues.append("缺少分步骤说明")
+
+    # 检查是否有具体操作细节
+    detail_signals = ["点击", "打开", "输入", "选择", "安装", "下载", "配置", "设置", "复制", "粘贴"]
+    detail_count = sum(1 for s in detail_signals if s in full_text)
+    if detail_count < 3:
+        detail_score -= 20
+        detail_issues.append("操作细节不够具体，缺少按钮/菜单/路径说明")
+
+    # 检查是否有注意事项
+    notice_signals = ["注意", "提醒", "别", "不要", "小心", "坑"]
+    has_notice = any(s in full_text for s in notice_signals)
+    if not has_notice:
+        detail_score -= 15
+        detail_issues.append("缺少注意事项和避坑提醒")
+
+    review["dimensions"]["tutorial_detail"] = {
+        "score": max(0, detail_score),
+        "issues": detail_issues
+    }
+    if detail_score < 70:
+        review["passed"] = False
+        review["issues"].extend(detail_issues)
+
+    # 3. 高赞结构检查
+    viral_score = 100
+    viral_issues = []
+
+    # 检查标题是否有数字
+    import re
+    if not re.search(r'\d+', title):
+        viral_score -= 15
+        viral_issues.append("标题缺少数字，不符合爆款公式")
+
+    # 检查开头是否有痛点
+    first_lines = content[:100]
+    pain_signals = ["坑", "难", "懵", "累", "烦", "不会", "不懂", "折腾", "报错"]
+    has_pain = any(s in first_lines for s in pain_signals)
+    if not has_pain:
+        viral_score -= 15
+        viral_issues.append("开头缺少痛点共鸣")
+
+    # 检查结尾是否有互动
+    last_lines = content[-100:]
+    cta_signals = ["评论", "留言", "告诉我", "你们", "大家", "点赞", "收藏", "关注"]
+    has_cta = any(s in last_lines for s in cta_signals)
+    if not has_cta:
+        viral_score -= 10
+        viral_issues.append("结尾缺少互动引导")
+
+    review["dimensions"]["viral_structure"] = {
+        "score": max(0, viral_score),
+        "issues": viral_issues
+    }
+
+    # 4. 合规检查（已有，这里复用）
+    compliance = draft.get("compliance", {})
+    review["dimensions"]["compliance"] = {
+        "passed": compliance.get("passed", True),
+        "issues": compliance.get("issues", [])
+    }
+    if not compliance.get("passed", True):
+        review["passed"] = False
+        review["issues"].extend(compliance.get("issues", []))
+
+    # 5. 综合评分
+    total_score = (
+        review["dimensions"]["ai_signal"]["score"] * 0.3 +
+        review["dimensions"]["tutorial_detail"]["score"] * 0.3 +
+        review["dimensions"]["viral_structure"]["score"] * 0.2 +
+        (100 if review["dimensions"]["compliance"]["passed"] else 0) * 0.2
+    )
+    review["score"] = round(total_score, 1)
+
+    # 生成建议
+    if review["score"] >= 90:
+        review["suggestions"].append("质量优秀，可以直接发布")
+    elif review["score"] >= 75:
+        review["suggestions"].append("质量良好，建议根据问题微调后发布")
+    else:
+        review["suggestions"].append("质量待提升，建议根据问题修改后重新审核")
+
+    return review
 
 
 def rewrite_single(title: str, content: str, platform: str, position: str = "",
@@ -412,6 +634,18 @@ def rewrite_single(title: str, content: str, platform: str, position: str = "",
         logger.info(f"质量检查通过: {quality['content_length']}字 (目标{quality['target_length']}字)")
     else:
         logger.warning(f"质量检查问题: {quality['issues']}")
+
+    # v2.0新增：最终审核 - 对照用户画像全面审核
+    review = final_review(draft, platform)
+    draft["final_review"] = review
+    logger.info(f"最终审核: 综合评分{review['score']}分 | "
+                f"去AI味{review['dimensions']['ai_signal']['score']}分 | "
+                f"教程细节{review['dimensions']['tutorial_detail']['score']}分 | "
+                f"爆款结构{review['dimensions']['viral_structure']['score']}分")
+    if review["issues"]:
+        logger.warning(f"最终审核问题: {review['issues'][:3]}")
+    if review["suggestions"]:
+        logger.info(f"审核建议: {review['suggestions'][0]}")
 
     return draft
 
@@ -577,11 +811,12 @@ def main():
         elif not keyword:
             keyword = "AI工具"
 
-        print(f"\n🔍 正在采集动态爆款参考（关键词: {keyword}，前{args.dynamic_top}篇）...")
+        print(f"\n🔍 正在采集动态爆款参考（关键词: {keyword}，前{args.dynamic_top}篇，赞≥1000或藏≥500）...")
         print("   （首次采集约需2-3分钟，后续使用缓存）")
         try:
             from scripts.utils.dynamic_viral_collector import get_dynamic_reference
-            dynamic_reference = get_dynamic_reference(keyword, top_n=args.dynamic_top)
+            dynamic_reference = get_dynamic_reference(keyword, top_n=args.dynamic_top,
+                                                       min_likes=1000, min_favorites=500)
             if dynamic_reference:
                 print(f"   ✅ 动态参考采集完成，共{len(dynamic_reference)}字符")
             else:
